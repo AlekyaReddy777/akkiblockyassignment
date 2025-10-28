@@ -1,0 +1,678 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vehicle Tracker Simulator</title>
+  <script src="/_sdk/element_sdk.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+        body {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100%;
+            overflow: hidden;
+        }
+
+        html {
+            height: 100%;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            max-width: 100%;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 1.5rem;
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .header h1 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #2d3748;
+        }
+
+        .route-info {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .info-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #718096;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .info-value {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #2d3748;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .map-container {
+            flex: 1;
+            position: relative;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        .controls-panel {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 1rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            min-width: 200px;
+            z-index: 1000;
+        }
+
+        .controls-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 0.75rem;
+        }
+
+        .control-buttons {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .control-btn {
+            flex: 1;
+            padding: 0.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.25rem;
+        }
+
+        .play-btn {
+            background: #48bb78;
+            color: white;
+        }
+
+        .play-btn:hover {
+            background: #38a169;
+        }
+
+        .play-btn:disabled {
+            background: #a0aec0;
+            cursor: not-allowed;
+        }
+
+        .pause-btn {
+            background: #ed8936;
+            color: white;
+        }
+
+        .pause-btn:hover {
+            background: #dd6b20;
+        }
+
+        .reset-btn {
+            background: #4299e1;
+            color: white;
+        }
+
+        .reset-btn:hover {
+            background: #3182ce;
+        }
+
+        .speed-control {
+            margin-bottom: 1rem;
+        }
+
+        .speed-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #4a5568;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+        .speed-slider {
+            width: 100%;
+            height: 4px;
+            border-radius: 2px;
+            background: #e2e8f0;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .speed-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #4299e1;
+            cursor: pointer;
+        }
+
+        .speed-slider::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #4299e1;
+            cursor: pointer;
+            border: none;
+        }
+
+        .status-info {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.75rem;
+        }
+
+        .status-label {
+            color: #718096;
+            font-weight: 500;
+        }
+
+        .status-value {
+            color: #2d3748;
+            font-weight: 600;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #e2e8f0;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #48bb78, #38a169);
+            border-radius: 3px;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        .vehicle-marker {
+            width: 24px;
+            height: 24px;
+            background: #e53e3e;
+            border: 3px solid white;
+            border-radius: 50%;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            transition: all 0.5s ease;
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                padding: 0.75rem 1rem;
+            }
+
+            .header h1 {
+                font-size: 1.25rem;
+            }
+
+            .route-info {
+                gap: 1rem;
+            }
+
+            .controls-panel {
+                top: 0.5rem;
+                right: 0.5rem;
+                left: 0.5rem;
+                min-width: auto;
+            }
+
+            .control-buttons {
+                flex-direction: column;
+            }
+
+            .info-item {
+                min-width: 120px;
+            }
+        }
+    </style>
+  <style>@view-transition { navigation: auto; }</style>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+  <script src="https://cdn.tailwindcss.com" type="text/javascript"></script>
+ </head>
+ <body>
+  <div class="container">
+   <header class="header">
+    <h1 id="app-title">Vehicle Tracker Simulator</h1>
+    <div class="route-info">
+     <div class="info-item"><span class="info-label">Vehicle</span> <span class="info-value" id="vehicle-name">Delivery Truck #1</span>
+     </div>
+     <div class="info-item"><span class="info-label">Route</span> <span class="info-value" id="route-name">Downtown Delivery Route</span>
+     </div>
+     <div class="info-item"><span class="info-label">Status</span> <span class="info-value" id="vehicle-status">Ready</span>
+     </div>
+    </div>
+   </header>
+   <main class="main-content">
+    <div class="map-container">
+     <div id="map"></div>
+     <div class="controls-panel">
+      <div class="controls-title">
+       Simulation Controls
+      </div>
+      <div class="control-buttons"><button class="control-btn play-btn" id="playBtn"> ▶ Play </button> <button class="control-btn pause-btn" id="pauseBtn"> ⏸ Pause </button> <button class="control-btn reset-btn" id="resetBtn"> ⏮ Reset </button>
+      </div>
+      <div class="speed-control"><label class="speed-label" for="speedSlider">Speed: <span id="speedValue">1x</span></label> <input type="range" id="speedSlider" class="speed-slider" min="0.5" max="3" step="0.5" value="1">
+      </div>
+      <div class="status-info">
+       <div class="status-item"><span class="status-label">Position:</span> <span class="status-value" id="currentPosition">0 / 0</span>
+       </div>
+       <div class="status-item"><span class="status-label">Coordinates:</span> <span class="status-value" id="currentCoords">---, ---</span>
+       </div>
+       <div class="status-item"><span class="status-label">Speed:</span> <span class="status-value" id="currentSpeed">0 km/h</span>
+       </div>
+       <div class="status-item"><span class="status-label">Time:</span> <span class="status-value" id="elapsedTime">00:00</span>
+       </div>
+      </div>
+      <div class="progress-bar">
+       <div class="progress-fill" id="progressFill"></div>
+      </div>
+     </div>
+    </div>
+   </main>
+  </div>
+  <script>
+        // Default configuration
+        const defaultConfig = {
+            app_title: "Vehicle Tracker Simulator",
+            vehicle_name: "Delivery Truck #1",
+            route_name: "Downtown Delivery Route",
+            primary_color: "#4299e1",
+            surface_color: "#ffffff",
+            text_color: "#2d3748",
+            accent_color: "#48bb78",
+            background_color: "#667eea"
+        };
+
+        // Dummy route data - simulating a delivery route in a city
+        const routeData = [
+            { "latitude": 40.7589, "longitude": -73.9851, "timestamp": "2024-07-20T10:00:00Z" },
+            { "latitude": 40.7590, "longitude": -73.9850, "timestamp": "2024-07-20T10:00:05Z" },
+            { "latitude": 40.7592, "longitude": -73.9848, "timestamp": "2024-07-20T10:00:10Z" },
+            { "latitude": 40.7595, "longitude": -73.9845, "timestamp": "2024-07-20T10:00:15Z" },
+            { "latitude": 40.7598, "longitude": -73.9842, "timestamp": "2024-07-20T10:00:20Z" },
+            { "latitude": 40.7601, "longitude": -73.9840, "timestamp": "2024-07-20T10:00:25Z" },
+            { "latitude": 40.7605, "longitude": -73.9838, "timestamp": "2024-07-20T10:00:30Z" },
+            { "latitude": 40.7608, "longitude": -73.9835, "timestamp": "2024-07-20T10:00:35Z" },
+            { "latitude": 40.7612, "longitude": -73.9832, "timestamp": "2024-07-20T10:00:40Z" },
+            { "latitude": 40.7615, "longitude": -73.9830, "timestamp": "2024-07-20T10:00:45Z" },
+            { "latitude": 40.7618, "longitude": -73.9827, "timestamp": "2024-07-20T10:00:50Z" },
+            { "latitude": 40.7621, "longitude": -73.9825, "timestamp": "2024-07-20T10:00:55Z" },
+            { "latitude": 40.7624, "longitude": -73.9822, "timestamp": "2024-07-20T10:01:00Z" },
+            { "latitude": 40.7627, "longitude": -73.9820, "timestamp": "2024-07-20T10:01:05Z" },
+            { "latitude": 40.7630, "longitude": -73.9818, "timestamp": "2024-07-20T10:01:10Z" },
+            { "latitude": 40.7633, "longitude": -73.9815, "timestamp": "2024-07-20T10:01:15Z" },
+            { "latitude": 40.7636, "longitude": -73.9813, "timestamp": "2024-07-20T10:01:20Z" },
+            { "latitude": 40.7639, "longitude": -73.9810, "timestamp": "2024-07-20T10:01:25Z" },
+            { "latitude": 40.7642, "longitude": -73.9808, "timestamp": "2024-07-20T10:01:30Z" },
+            { "latitude": 40.7645, "longitude": -73.9805, "timestamp": "2024-07-20T10:01:35Z" }
+        ];
+
+        // Application state
+        let map;
+        let vehicleMarker;
+        let routePolyline;
+        let currentRoutePolyline;
+        let currentIndex = 0;
+        let isPlaying = false;
+        let animationSpeed = 1;
+        let startTime = null;
+        let animationId = null;
+
+        // Initialize the application
+        function initializeApp() {
+            initializeMap();
+            setupEventListeners();
+            updateUI();
+        }
+
+        // Initialize the Leaflet map
+        function initializeMap() {
+            // Create map centered on the first route point
+            map = L.map('map').setView([routeData[0].latitude, routeData[0].longitude], 15);
+
+            // Add OpenStreetMap tiles
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            // Create the full route polyline (in light gray)
+            const routeCoordinates = routeData.map(point => [point.latitude, point.longitude]);
+            routePolyline = L.polyline(routeCoordinates, {
+                color: '#cbd5e0',
+                weight: 4,
+                opacity: 0.7,
+                dashArray: '10, 5'
+            }).addTo(map);
+
+            // Create the current route polyline (colored)
+            currentRoutePolyline = L.polyline([], {
+                color: '#48bb78',
+                weight: 6,
+                opacity: 0.9
+            }).addTo(map);
+
+            // Create vehicle marker
+            const vehicleIcon = L.divIcon({
+                className: 'vehicle-marker',
+                iconSize: [24, 24],
+                iconAnchor: [12, 12]
+            });
+
+            vehicleMarker = L.marker([routeData[0].latitude, routeData[0].longitude], {
+                icon: vehicleIcon
+            }).addTo(map);
+
+            // Fit map to show the entire route
+            map.fitBounds(routePolyline.getBounds(), { padding: [20, 20] });
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            document.getElementById('playBtn').addEventListener('click', startSimulation);
+            document.getElementById('pauseBtn').addEventListener('click', pauseSimulation);
+            document.getElementById('resetBtn').addEventListener('click', resetSimulation);
+            
+            const speedSlider = document.getElementById('speedSlider');
+            speedSlider.addEventListener('input', (e) => {
+                animationSpeed = parseFloat(e.target.value);
+                document.getElementById('speedValue').textContent = `${animationSpeed}x`;
+            });
+        }
+
+        // Start the simulation
+        function startSimulation() {
+            if (currentIndex >= routeData.length - 1) {
+                resetSimulation();
+            }
+            
+            isPlaying = true;
+            startTime = Date.now();
+            document.getElementById('vehicle-status').textContent = 'Moving';
+            document.getElementById('playBtn').disabled = true;
+            
+            animate();
+        }
+
+        // Pause the simulation
+        function pauseSimulation() {
+            isPlaying = false;
+            document.getElementById('vehicle-status').textContent = 'Paused';
+            document.getElementById('playBtn').disabled = false;
+            
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+            }
+        }
+
+        // Reset the simulation
+        function resetSimulation() {
+            isPlaying = false;
+            currentIndex = 0;
+            startTime = null;
+            document.getElementById('vehicle-status').textContent = 'Ready';
+            document.getElementById('playBtn').disabled = false;
+            
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+            }
+
+            // Reset vehicle position
+            vehicleMarker.setLatLng([routeData[0].latitude, routeData[0].longitude]);
+            
+            // Reset current route polyline
+            currentRoutePolyline.setLatLngs([]);
+            
+            updateUI();
+        }
+
+        // Animation loop
+        function animate() {
+            if (!isPlaying || currentIndex >= routeData.length - 1) {
+                if (currentIndex >= routeData.length - 1) {
+                    document.getElementById('vehicle-status').textContent = 'Completed';
+                    document.getElementById('playBtn').disabled = false;
+                }
+                return;
+            }
+
+            const now = Date.now();
+            const elapsed = (now - startTime) * animationSpeed;
+            const intervalMs = 2000; // Move every 2 seconds (adjusted by speed)
+            
+            if (elapsed >= intervalMs * (currentIndex + 1)) {
+                currentIndex++;
+                
+                if (currentIndex < routeData.length) {
+                    const currentPoint = routeData[currentIndex];
+                    
+                    // Update vehicle marker position
+                    vehicleMarker.setLatLng([currentPoint.latitude, currentPoint.longitude]);
+                    
+                    // Update current route polyline
+                    const currentRouteCoords = routeData.slice(0, currentIndex + 1)
+                        .map(point => [point.latitude, point.longitude]);
+                    currentRoutePolyline.setLatLngs(currentRouteCoords);
+                    
+                    // Calculate and display speed
+                    if (currentIndex > 0) {
+                        const prevPoint = routeData[currentIndex - 1];
+                        const distance = calculateDistance(
+                            prevPoint.latitude, prevPoint.longitude,
+                            currentPoint.latitude, currentPoint.longitude
+                        );
+                        const timeInterval = 5; // 5 seconds between points
+                        const speed = (distance / timeInterval) * 3.6; // Convert m/s to km/h
+                        document.getElementById('currentSpeed').textContent = `${speed.toFixed(1)} km/h`;
+                    }
+                    
+                    updateUI();
+                }
+            }
+
+            animationId = requestAnimationFrame(animate);
+        }
+
+        // Calculate distance between two points (Haversine formula)
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371e3; // Earth's radius in meters
+            const φ1 = lat1 * Math.PI/180;
+            const φ2 = lat2 * Math.PI/180;
+            const Δφ = (lat2-lat1) * Math.PI/180;
+            const Δλ = (lon2-lon1) * Math.PI/180;
+
+            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                      Math.cos(φ1) * Math.cos(φ2) *
+                      Math.sin(Δλ/2) * Math.sin(Δλ/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+            return R * c;
+        }
+
+        // Update UI elements
+        function updateUI() {
+            const currentPoint = routeData[currentIndex];
+            
+            // Update position info
+            document.getElementById('currentPosition').textContent = `${currentIndex + 1} / ${routeData.length}`;
+            document.getElementById('currentCoords').textContent = 
+                `${currentPoint.latitude.toFixed(6)}, ${currentPoint.longitude.toFixed(6)}`;
+            
+            // Update progress bar
+            const progress = ((currentIndex + 1) / routeData.length) * 100;
+            document.getElementById('progressFill').style.width = `${progress}%`;
+            
+            // Update elapsed time
+            if (startTime && isPlaying) {
+                const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                const minutes = Math.floor(elapsed / 60);
+                const seconds = elapsed % 60;
+                document.getElementById('elapsedTime').textContent = 
+                    `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            } else if (!isPlaying && currentIndex === 0) {
+                document.getElementById('elapsedTime').textContent = '00:00';
+                document.getElementById('currentSpeed').textContent = '0 km/h';
+            }
+        }
+
+        // Configuration change handler
+        async function onConfigChange(config) {
+            const appTitle = config.app_title || defaultConfig.app_title;
+            const vehicleName = config.vehicle_name || defaultConfig.vehicle_name;
+            const routeName = config.route_name || defaultConfig.route_name;
+            const primaryColor = config.primary_color || defaultConfig.primary_color;
+            const surfaceColor = config.surface_color || defaultConfig.surface_color;
+            const textColor = config.text_color || defaultConfig.text_color;
+            const accentColor = config.accent_color || defaultConfig.accent_color;
+            const backgroundColor = config.background_color || defaultConfig.background_color;
+
+            // Update text content
+            document.getElementById('app-title').textContent = appTitle;
+            document.getElementById('vehicle-name').textContent = vehicleName;
+            document.getElementById('route-name').textContent = routeName;
+
+            // Update colors
+            document.body.style.background = `linear-gradient(135deg, ${backgroundColor} 0%, ${primaryColor} 100%)`;
+            
+            // Update header and panel colors
+            const header = document.querySelector('.header');
+            const controlsPanel = document.querySelector('.controls-panel');
+            header.style.background = `rgba(255, 255, 255, 0.95)`;
+            controlsPanel.style.background = `rgba(255, 255, 255, 0.95)`;
+
+            // Update button colors
+            const playBtn = document.querySelector('.play-btn');
+            const resetBtn = document.querySelector('.reset-btn');
+            playBtn.style.background = accentColor;
+            resetBtn.style.background = primaryColor;
+
+            // Update progress bar color
+            const progressFill = document.getElementById('progressFill');
+            progressFill.style.background = `linear-gradient(90deg, ${accentColor}, ${primaryColor})`;
+
+            // Update polyline colors if map is initialized
+            if (currentRoutePolyline) {
+                currentRoutePolyline.setStyle({ color: accentColor });
+            }
+        }
+
+        // Element SDK implementation
+        const element = {
+            defaultConfig,
+            onConfigChange,
+            mapToCapabilities: (config) => ({
+                recolorables: [
+                    {
+                        get: () => config.background_color || defaultConfig.background_color,
+                        set: (value) => {
+                            config.background_color = value;
+                            window.elementSdk.setConfig({ background_color: value });
+                        }
+                    },
+                    {
+                        get: () => config.surface_color || defaultConfig.surface_color,
+                        set: (value) => {
+                            config.surface_color = value;
+                            window.elementSdk.setConfig({ surface_color: value });
+                        }
+                    },
+                    {
+                        get: () => config.text_color || defaultConfig.text_color,
+                        set: (value) => {
+                            config.text_color = value;
+                            window.elementSdk.setConfig({ text_color: value });
+                        }
+                    },
+                    {
+                        get: () => config.primary_color || defaultConfig.primary_color,
+                        set: (value) => {
+                            config.primary_color = value;
+                            window.elementSdk.setConfig({ primary_color: value });
+                        }
+                    },
+                    {
+                        get: () => config.accent_color || defaultConfig.accent_color,
+                        set: (value) => {
+                            config.accent_color = value;
+                            window.elementSdk.setConfig({ accent_color: value });
+                        }
+                    }
+                ],
+                borderables: [],
+                fontEditable: undefined,
+                fontSizeable: undefined
+            }),
+            mapToEditPanelValues: (config) => new Map([
+                ["app_title", config.app_title || defaultConfig.app_title],
+                ["vehicle_name", config.vehicle_name || defaultConfig.vehicle_name],
+                ["route_name", config.route_name || defaultConfig.route_name]
+            ])
+        };
+
+        // Initialize everything when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeApp();
+            
+            // Initialize Element SDK if available
+            if (window.elementSdk) {
+                window.elementSdk.init(element);
+            }
+        });
+    </script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'99599492625da6dc',t:'MTc2MTY0NTU2Ni4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
